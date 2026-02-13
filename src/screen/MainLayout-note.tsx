@@ -3,6 +3,26 @@ import { useNotes } from '../hooks/useNotes';
 import './MainLayout-note.css'; 
 import SwipeableItem from '../components/SwipeableItem';
 import type { Note } from '../types-note';
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import Placeholder from '@tiptap/extension-placeholder';
+import { Markdown } from 'tiptap-markdown';
+
+const stripMarkdown = (text: string | undefined) => {
+    if (!text) return '';
+    return text
+        .replace(/<[^>]*>?/gm, ' ') // HTML
+        .replace(/^#+\s+/gm, '') // Headers
+        .replace(/(\*\*|__)(.*?)\1/g, '$2') // Bold
+        .replace(/(\*|_)(.*?)\1/g, '$2') // Italic
+        .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1') // Links
+        .replace(/!\[([^\]]*)\]\([^\)]+\)/g, '') // Images
+        .replace(/`([^`]+)`/g, '$1') // Inline code
+        .replace(/^\s*[-*+]\s+/gm, '') // List items
+        .replace(/^\s*>\s+/gm, '') // Blockquotes
+        .replace(/\n+/g, ' ') // Newlines to spaces
+        .trim();
+};
 
 const MainLayoutNote = () => {
     const scriptUrl = localStorage.getItem('vibe_script_url_note');
@@ -12,6 +32,39 @@ const MainLayoutNote = () => {
     const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [isEditing, setIsEditing] = useState(false);
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+    // Initialize: Select the last accessed note, or fallback to first
+    const hasInitializedRef = useRef(false);
+    useEffect(() => {
+        if (!hasInitializedRef.current && notes.length > 0) {
+            const lastId = localStorage.getItem('notebook_last_selected_id');
+            const targetNote = lastId ? notes.find(n => n.id === lastId) : null;
+
+            if (targetNote) {
+                setSelectedNoteId(targetNote.id);
+            } else {
+                // Determine the correct sort order (same as filteredNotes)
+                // Pinned first, then by updated_at desc
+                const sorted = [...notes].sort((a,b) => {
+                    if (a.is_pinned !== b.is_pinned) return a.is_pinned ? -1 : 1;
+                    return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+                });
+                
+                if (sorted.length > 0) {
+                    setSelectedNoteId(sorted[0].id);
+                }
+            }
+            hasInitializedRef.current = true;
+        }
+    }, [notes]);
+
+    // Persist selectedNoteId
+    useEffect(() => {
+        if (selectedNoteId) {
+            localStorage.setItem('notebook_last_selected_id', selectedNoteId);
+        }
+    }, [selectedNoteId]);
     
     const selectedNote = notes.find(n => n.id === selectedNoteId);
     
@@ -20,29 +73,12 @@ const MainLayoutNote = () => {
         const newId = addNote({ title: 'New Note', content: '', tags: [] });
         setSelectedNoteId(newId);
         setIsEditing(true);
+        // Tiptap needs a moment to initialize or receive the new ID prop
     }, [addNote]);
 
     const handleEditorChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        if (selectedNoteId) {
-             const text = e.target.value;
-             // Split only on the first newline to separate Title and Content
-             const firstLineIndex = text.indexOf('\n');
-             let newTitle = '';
-             let newContent = '';
-
-             if (firstLineIndex === -1) {
-                 // No newline => Everything is title
-                 newTitle = text;
-                 newContent = '';
-             } else {
-                 newTitle = text.slice(0, firstLineIndex);
-                 // Include the newline in the content to preserve it
-                 newContent = text.slice(firstLineIndex);
-             }
-
-            updateNote(selectedNoteId, { title: newTitle, content: newContent });
-        }
-    }, [selectedNoteId, updateNote]);
+        // Legacy handler removed, but keeping reference to avoid errors if referenced elsewhere
+    }, []);
 
     // Shortcuts
     useEffect(() => {
@@ -59,7 +95,10 @@ const MainLayoutNote = () => {
     const filteredNotes = notes
     .filter(n => {
         const term = searchTerm.toLowerCase();
-        return (n.title || '').toLowerCase().includes(term) || (n.content || '').toLowerCase().includes(term);
+        // Ensure title and content are strings to prevent .toLowerCase() errors on numbers/etc
+        const title = String(n.title || '');
+        const content = String(n.content || '');
+        return title.toLowerCase().includes(term) || content.toLowerCase().includes(term);
     })
     .sort((a,b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
 
@@ -77,6 +116,7 @@ const MainLayoutNote = () => {
         last30Days.setDate(last30Days.getDate() - 30);
 
         const g = {
+            pinned: [] as Note[],
             today: [] as Note[],
             yesterday: [] as Note[],
             last7Days: [] as Note[],
@@ -85,6 +125,11 @@ const MainLayoutNote = () => {
         };
 
         filteredNotes.forEach(note => {
+            if (note.is_pinned) {
+                g.pinned.push(note);
+                return;
+            }
+
             const d = new Date(note.updated_at);
             // Reset time part for accurate day comparison
             // Or just compare timestamps
@@ -129,7 +174,7 @@ const MainLayoutNote = () => {
             <div style={{ padding: '12px', pointerEvents: 'none' }}>
                 <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{note.title || 'Untitled'}</div>
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {note.content?.trim().slice(0, 50) || (<span style={{ fontStyle: 'italic', opacity: 0.7 }}>No content</span>)}
+                    {stripMarkdown(note.content).slice(0, 50) || (<span style={{ fontStyle: 'italic', opacity: 0.7 }}>No content</span>)}
                 </div>
             </div>
         </SwipeableItem>
@@ -162,12 +207,110 @@ const MainLayoutNote = () => {
         setSelectedNoteId(null);
     }, []);
     
-    // Touch handling for editor
+    const isLoadingRef = useRef(false);
+
+    // Tiptap Editor
+    const editor = useEditor({
+        extensions: [
+            StarterKit,
+            Placeholder.configure({
+                placeholder: 'Start typing...',
+            }),
+            Markdown.configure({
+                html: false,
+                transformPastedText: true,
+                transformCopiedText: true,
+            }),
+        ],
+        content: '',
+        onUpdate: ({ editor }) => {
+            if (activeNoteIdRef.current && !isLoadingRef.current) {
+                // Get Markdown content
+                const markdown = editor.storage.markdown.getMarkdown();
+
+                // For title, we grab the text of the first block/node to simulate "first line title"
+                const fullText = editor.getText();
+                const firstLineIndex = fullText.indexOf('\n');
+                const title = firstLineIndex === -1 ? fullText : fullText.slice(0, firstLineIndex);
+                
+                // We update title just for the sidebar list.
+                // SKIP timestamp update on keystroke to prevent list jumping
+                updateNote(activeNoteIdRef.current, { title: title, content: markdown }, { skipTimestampUpdate: true });
+            }
+        },
+        onBlur: () => {
+             // Update timestamp only when focus leaves (edit finished)
+             // Check if we are actually editing or just navigating away
+             if (activeNoteIdRef.current && !isLoadingRef.current) {
+                updateNote(activeNoteIdRef.current, {}); 
+            }
+        },
+        editable: false, // Start read-only
+        editorProps: {
+            attributes: {
+                class: 'note-editor-tiptap', 
+            },
+        },
+    });
+    
+    // Check if we switched notes
+    const activeNoteIdRef = useRef<string | null>(null);
+
+    useEffect(() => {
+        activeNoteIdRef.current = selectedNoteId;
+        if (editor && selectedNote) {
+            // Check if content changed externally or initialization
+            // Be careful not to reset cursor on every re-render if we triggered the update
+            // Ideally compare content? But HTML comparision is hard.
+            // For now, only set content if we switched note IDs or if editor is empty
+            // This is tricky with React + Tiptap external state.
+            // Simple approach: Only set content when selectedNoteId CHANGES.
+        }
+    }, [selectedNoteId, selectedNote, editor]);
+    
+    // Sync Editor Content when Note ID changes
+    const lastNoteIdRef = useRef<string | null>(null);
+    useEffect(() => {
+        if (selectedNoteId !== lastNoteIdRef.current) {
+            if (editor && selectedNote) {
+                isLoadingRef.current = true; // Flag: loading started
+                
+                const content = selectedNote.content || '';
+                
+                // Content can be HTML (old) or Markdown (new/legacy text)
+                // specific check for HTML to ensure safe loading of legacy HTML
+                const isHtml = content.trim().startsWith('<');
+                
+                // Set content. Tiptap + Markdown extension handles both usually, 
+                // but checking ensures structure.
+                editor.commands.setContent(content);
+                
+                // Clear history so undo doesn't go back to previous note
+                if (editor.commands.clearContentHistory) {
+                    editor.commands.clearContentHistory();
+                }
+                
+                // Flag: loading ended. Timeout ensures onUpdate from setContent is skipped
+                setTimeout(() => {
+                    isLoadingRef.current = false;
+                }, 0);
+            }
+            lastNoteIdRef.current = selectedNoteId;
+        }
+    }, [selectedNoteId, selectedNote, editor]);
+
+    // Update Editable State
+    useEffect(() => {
+        if (editor) {
+            editor.setEditable(isEditing);
+        }
+    }, [isEditing, editor]);
+
+    // Touch handling for editor wrapper
     const touchStartRef = useRef<{x: number, y: number} | null>(null);
-    const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     const handleTouchStart = (e: React.TouchEvent) => {
-        if (isEditing) return; // If already editing, let native behavior happen
+        if (isEditing) return; 
         touchStartRef.current = {
             x: e.touches[0].clientX,
             y: e.touches[0].clientY
@@ -185,25 +328,18 @@ const MainLayoutNote = () => {
         
         const diffX = Math.abs(deltaX);
         const diffY = Math.abs(deltaY);
-
-        // Calculate total movement distance
         const distance = Math.sqrt(diffX*diffX + diffY*diffY);
 
         if (distance < 40) {
-            // It's a tap
             setIsEditing(true);
             setTimeout(() => {
-                textareaRef.current?.focus();
+                 editor?.commands.focus();
             }, 50);
         } else {
-            // It's a swipe or scroll
-            // Check for Swipe Back (Left-to-Right)
-            // Condition: Horizontal dominant, rightwards positive delta, > 30% viewport width
             if (diffX > diffY && deltaX > 0 && deltaX > (window.innerWidth * 0.3)) {
                 handleBack();
             }
         }
-        
         touchStartRef.current = null;
     };
 
@@ -231,12 +367,69 @@ const MainLayoutNote = () => {
 
         {/* Mobile Editor Header (When viewing note) */}
         {selectedNoteId && (
-            <div className="header-bar mobile-editor-header" style={{ padding: '10px', borderBottom: '1px solid var(--border-color)', alignItems: 'center', gap: '10px' }}>
+            <div className="header-bar mobile-editor-header" style={{ padding: '10px', borderBottom: '1px solid var(--border-color)', alignItems: 'center', gap: '10px', position: 'relative' }}>
                  <button onClick={handleBack} className="icon-btn">
                     <span className="material-symbols-outlined">arrow_back_ios</span>
                  </button>
                  <div style={{ flex: 1 }}></div>
-                 {/* Edit button removed as per request, rely on tap/interaction */}
+                 
+                 <button className="icon-btn" onClick={() => setIsMenuOpen(!isMenuOpen)}>
+                    <span className="material-symbols-outlined">more_horiz</span>
+                 </button>
+
+                 {isMenuOpen && (
+                    <>
+                        <div 
+                            style={{ position: 'fixed', inset: 0, zIndex: 99 }} 
+                            onClick={() => setIsMenuOpen(false)}
+                        ></div>
+                        <div style={{
+                            position: 'absolute',
+                            top: '100%',
+                            right: '10px',
+                            backgroundColor: 'var(--bg-card)',
+                            border: '1px solid var(--border-color)',
+                            borderRadius: '8px',
+                            boxShadow: '0 4px 12px var(--shadow-color)',
+                            zIndex: 100,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            minWidth: '160px',
+                            overflow: 'hidden'
+                        }}>
+                             <button style={{
+                                 display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 16px', 
+                                 background: 'transparent', border: 'none', color: 'var(--text-main)',
+                                 fontSize: '1rem', width: '100%', textAlign: 'left',
+                                 borderBottom: '1px solid var(--border-color)',
+                                 cursor: 'pointer'
+                             }} onClick={() => {
+                                 if (selectedNoteId) {
+                                     updateNote(selectedNoteId, { is_pinned: !selectedNote?.is_pinned });
+                                     setIsMenuOpen(false);
+                                 }
+                             }}>
+                                 <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>{selectedNote?.is_pinned ? 'keep_off' : 'keep'}</span>
+                                 {selectedNote?.is_pinned ? 'Unpin' : 'Pin'}
+                             </button>
+                             <button style={{
+                                 display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 16px', 
+                                 background: 'transparent', border: 'none', color: 'var(--danger)',
+                                 fontSize: '1rem', width: '100%', textAlign: 'left',
+                                 cursor: 'pointer'
+                             }} onClick={() => {
+                                 if (confirm('Delete this note?')) {
+                                     if (selectedNoteId) removeNote(selectedNoteId);
+                                     setSelectedNoteId(null);
+                                     setIsMenuOpen(false);
+                                 }
+                             }}>
+                                 <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>delete</span>
+                                 Delete
+                             </button>
+                        </div>
+                    </>
+                 )}
             </div>
         )}
 
@@ -267,6 +460,7 @@ const MainLayoutNote = () => {
                 <div className="note-sidebar-list" style={{ flex: 1, overflowY: 'auto' }}>
                     {filteredNotes.length === 0 && <p style={{ padding: '20px', color: 'var(--text-muted)' }}>No notes found.</p>}
                     
+                    {renderGroup('Pinned', groups.pinned)}
                     {renderGroup('Today', groups.today)}
                     {renderGroup('Yesterday', groups.yesterday)}
                     {renderGroup('Previous 7 Days', groups.last7Days)}
@@ -279,44 +473,56 @@ const MainLayoutNote = () => {
             <div className={`note-editor ${!selectedNoteId ? 'hidden-on-mobile' : ''} ${selectedNoteId ? 'active-mobile' : ''}`} style={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: 'var(--bg-main)', overflow: 'hidden' }}>
                 {selectedNote ? (
                     <>
-                        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', padding: '20px' }}> 
-                            <textarea
-                                ref={textareaRef}
-                                className="note-editor-textarea"
-                                // Combine title and content for the view
-                                // If content exists but doesn't start with newline (legacy data), add one.
-                                // If content starts with newline (new data structure), use as is.
-                                value={selectedNote.title + (selectedNote.content ? (selectedNote.content.startsWith('\n') ? selectedNote.content : `\n${selectedNote.content}`) : '')}
-                                onChange={handleEditorChange}
-                                placeholder="Start typing..."
-                                readOnly={!isEditing}
-                                onTouchStart={handleTouchStart}
-                                onTouchEnd={handleTouchEnd}
-                                style={{
-                                    width: '100%',
-                                    height: '100%',
-                                    resize: 'none',
-                                    border: 'none',
-                                    outline: 'none',
-                                    backgroundColor: 'transparent',
-                                    color: 'var(--text-main)',
-                                    fontFamily: 'inherit',
-                                    fontSize: '1rem',
-                                    lineHeight: '1.5',
-                                    // When not editing, allow touch events but maybe pointer can be different
-                                    cursor: isEditing ? 'text' : 'default'
-                                }}
-                            />
-                        </div>
-                        <div style={{ padding: '10px', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'flex-end', backgroundColor: 'var(--bg-main)' }}>
-                                <button className="icon-btn" style={{ color: 'var(--danger)' }} title="Delete Note" onClick={() => {
+                        {/* Desktop Toolbar */}
+                        <div className="hidden-on-mobile" style={{ 
+                             padding: '10px 20px', 
+                             borderBottom: '1px solid var(--border-color)', 
+                             display: 'flex', 
+                             justifyContent: 'flex-end',
+                             alignItems: 'center',
+                             gap: '8px',
+                             background: 'var(--bg-main)'
+                        }}>
+                             <span style={{ marginRight: 'auto', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                                 {new Date(selectedNote.updated_at).toLocaleString()}
+                             </span>
+                             
+                             <button className="icon-btn" title={selectedNote.is_pinned ? "Unpin Note" : "Pin Note"} onClick={() => {
+                                 updateNote(selectedNote.id, { is_pinned: !selectedNote.is_pinned }, { skipTimestampUpdate: true });
+                             }}>
+                                 <span className="material-symbols-outlined" style={{ 
+                                     color: selectedNote.is_pinned ? 'var(--primary)' : 'var(--text-secondary)',
+                                     fontVariationSettings: selectedNote.is_pinned ? "'FILL' 1" : "'FILL' 0" 
+                                 }}>
+                                     {selectedNote.is_pinned ? 'keep' : 'keep_off'}
+                                 </span>
+                             </button>
+
+                             <div style={{ width: '1px', height: '20px', background: 'var(--border-color)', margin: '0 4px' }}></div>
+
+                             <button className="icon-btn" style={{ color: 'var(--danger)' }} title="Delete Note" onClick={() => {
                                     if(confirm('Delete this note?')) {
                                         removeNote(selectedNote.id);
                                         setSelectedNoteId(null);
                                     }
                                 }}>
                                     <span className="material-symbols-outlined">delete</span>
-                                </button>
+                             </button>
+                        </div>
+
+                        <div 
+                            style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', padding: '20px', cursor: 'text' }}
+                            onTouchStart={handleTouchStart}
+                            onTouchEnd={handleTouchEnd}
+                            onClick={() => { 
+                                if (!isEditing) {
+                                    setIsEditing(true);
+                                    // Slight delay to allow state update to propagate to Tiptap
+                                    setTimeout(() => editor?.commands.focus(), 10);
+                                }
+                            }}
+                        > 
+                            <EditorContent editor={editor} style={{ flex: 1, height: '100%', overflowY: 'auto' }} />
                         </div>
                     </>
                 ) : (

@@ -195,13 +195,17 @@ export const useNotes = (scriptUrl: string | null) => {
     return newNote.id;
   }, []);
 
-  const updateNote = useCallback((id: string, patches: Partial<Omit<Note, 'id' | 'updated_at'>>) => {
+  const updateNote = useCallback((id: string, patches: Partial<Omit<Note, 'id' | 'updated_at'>>, options?: { skipTimestampUpdate?: boolean }) => {
      setNotes(prevNotes => {
         const index = prevNotes.findIndex(n => n.id === id);
         if (index === -1) return prevNotes;
         
         const oldNote = prevNotes[index];
-        const newNote = { ...oldNote, ...patches, updated_at: new Date().toISOString() };
+        const newNote = { 
+            ...oldNote, 
+            ...patches, 
+            updated_at: options?.skipTimestampUpdate ? oldNote.updated_at : new Date().toISOString() 
+        };
         
         const newNotes = [...prevNotes];
         newNotes[index] = newNote;

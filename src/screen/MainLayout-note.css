@@ -19,6 +19,16 @@
   background-color: rgba(0, 0, 0, 0.03);
 }
 
+/* Ensure no outlines on prose mirror */
+.ProseMirror,
+.ProseMirror-focused,
+.note-editor-tiptap:focus {
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+  min-height: 100%;
+}
+
 @media (prefers-color-scheme: dark) {
   .note-list-item:hover {
     background-color: rgba(255, 255, 255, 0.05);
@@ -80,7 +90,8 @@
   }
 
   /* Toggle Headers */
-  .desktop-header {
+  .desktop-header,
+  .hidden-on-mobile {
     display: none !important;
   }
 
@@ -219,3 +230,61 @@
   }
 
   /* --- Animation Logic for Slide Transition --- */
+
+/* Tiptap Editor Styles */
+.note-editor-tiptap {
+  outline: none !important;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--text-main);
+  font-family: inherit;
+  
+  /* Ensure it fills the area */
+  min-height: 100%;
+}
+
+.note-editor-tiptap p.is-editor-empty:first-child::before {
+  color: var(--text-muted);
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+.note-editor-tiptap h1 { font-size: 1.6em; margin-top: 0.5em; margin-bottom: 0.3em; }
+.note-editor-tiptap h2 { font-size: 1.4em; }
+.note-editor-tiptap h3 { font-size: 1.2em; }
+
+.note-editor-tiptap ul, .note-editor-tiptap ol {
+  padding-left: 1.2em;
+}
+
+.note-editor-tiptap blockquote {
+  border-left: 3px solid var(--border-color);
+  padding-left: 1rem;
+  margin-left: 0;
+  color: var(--text-secondary);
+}
+
+.note-editor-tiptap code {
+  background-color: var(--bg-item);
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  font-family: monospace;
+  font-size: 0.9em;
+}
+
+.note-editor-tiptap pre {
+  background: var(--bg-item);
+  color: var(--text-main);
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+}
+.note-editor-tiptap pre code {
+  color: inherit;
+  padding: 0;
+  background: none;
+  font-size: 0.8rem;
+}
+}
