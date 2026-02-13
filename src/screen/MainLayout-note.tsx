@@ -249,6 +249,7 @@ const MainLayoutNote = () => {
     const handleBack = useCallback(() => {
         setIsEditing(false);
         setSelectedNoteId(null);
+        localStorage.removeItem('notebook_last_selected_id');
     }, []);
     
     const isLoadingRef = useRef(false);
