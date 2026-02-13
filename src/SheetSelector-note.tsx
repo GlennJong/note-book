@@ -218,26 +218,7 @@ const SheetSelectorNote = ({ token, onSelect }: { token: string, onSelect: (endp
             isNew={newCreationSheetName.some((sheetName) => file.name.includes(sheetName))}
             key={file.id}
             file={file}
-            onSelect={(data) => {
-               // We just use file info here, but FileItem does fetching. 
-               // Actually we need to check how FileItem works. 
-               // FileItem fetches data and calls onSelect with data.
-               // But we are selecting a sheet URL mostly.
-               // Wait, SheetSelector.tsx:
-               // onSelect={() => { if (file.scriptUrl) { handleStoreEndpoint(file.scriptUrl); } }}
-               // But FileItem prop is onSelect: (data: Data[]) => void
-               // So SheetSelector in MoneyBook code does:
-               /*
-                onSelect={() => {
-                    if (file.scriptUrl) {
-                    handleStoreEndpoint(file.scriptUrl);
-                    }
-                }} 
-               */
-               // But FileItem definition: 
-               /* const FileItem = ({ ..., onSelect }: { ..., onSelect: (data: Data[]) => void }) => { ... onSelect(data); ... } */
-               // So the original SheetSelector code passes a function that ignores the argument?
-               // Let's check SheetSelector.tsx again.
+            onSelect={() => {
                if (file.scriptUrl) {
                  handleStoreEndpoint(file.scriptUrl);
                }

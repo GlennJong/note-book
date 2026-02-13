@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { ReactHooks } from '@glennjong/vibe-sheets';
 import './App.css';
 import SheetSelectorNote from './SheetSelector-note';
-import MainLayoutNote from './screen/MainLayout-note';
+
+const MainLayoutNote = lazy(() => import('./screen/MainLayout-note'));
 
 const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
@@ -17,7 +18,16 @@ function App() {
 
 
   if (selectedScriptUrl) {
-    return <MainLayoutNote />;
+    return (
+      <Suspense fallback={
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: 'var(--bg-main)' }}>
+           <span className="spinner" style={{ width: '40px', height: '40px', border: '4px solid var(--primary)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></span>
+           <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+        </div>
+      }>
+        <MainLayoutNote />
+      </Suspense>
+    );
   }
   
   if (!accessToken) {
