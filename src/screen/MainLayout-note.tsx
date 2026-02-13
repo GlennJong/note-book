@@ -15,7 +15,9 @@ const stripMarkdown = (text: string | undefined) => {
         .replace(/^#+\s+/gm, '') // Headers
         .replace(/(\*\*|__)(.*?)\1/g, '$2') // Bold
         .replace(/(\*|_)(.*?)\1/g, '$2') // Italic
+        // eslint-disable-next-line no-useless-escape
         .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1') // Links
+        // eslint-disable-next-line no-useless-escape
         .replace(/!\[([^\]]*)\]\([^\)]+\)/g, '') // Images
         .replace(/`([^`]+)`/g, '$1') // Inline code
         .replace(/^\s*[-*+]\s+/gm, '') // List items
@@ -26,38 +28,75 @@ const stripMarkdown = (text: string | undefined) => {
 
 const MainLayoutNote = () => {
     const scriptUrl = localStorage.getItem('vibe_script_url_note');
-    const { notes, addNote, updateNote, removeNote, isSyncing, pendingTaskCount } = useNotes(scriptUrl);
+    const { notes, addNote, updateNote, removeNote, isSyncing, pendingTaskCount, loading } = useNotes(scriptUrl);
     
     // Memoize the selected ID to prevent unnecessary re-renders
     const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [isEditing, setIsEditing] = useState(false);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [transitionsEnabled, setTransitionsEnabled] = useState(false); // Initially disabled to prevent slide-in
+    
+    // Sidebar Resizing
+    const [sidebarWidth, setSidebarWidth] = useState(300);
+    const [isResizing, setIsResizing] = useState(false);
+
+    useEffect(() => {
+        const handleMouseMove = (e: MouseEvent) => {
+            if (!isResizing) return;
+            let newWidth = e.clientX;
+            if (newWidth < 200) newWidth = 200; // Min width
+            if (newWidth > 600) newWidth = 600; // Max width
+            setSidebarWidth(newWidth);
+        };
+
+        const handleMouseUp = () => {
+            setIsResizing(false);
+        };
+
+        if (isResizing) {
+            window.addEventListener('mousemove', handleMouseMove);
+            window.addEventListener('mouseup', handleMouseUp);
+        }
+
+        return () => {
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, [isResizing]);
 
     // Initialize: Select the last accessed note, or fallback to first
     const hasInitializedRef = useRef(false);
     useEffect(() => {
-        if (!hasInitializedRef.current && notes.length > 0) {
-            const lastId = localStorage.getItem('notebook_last_selected_id');
-            const targetNote = lastId ? notes.find(n => n.id === lastId) : null;
+        if (!loading) {
+            if (!hasInitializedRef.current && notes.length > 0) {
+                const lastId = localStorage.getItem('notebook_last_selected_id');
+                const targetNote = lastId ? notes.find(n => n.id === lastId) : null;
 
-            if (targetNote) {
-                setSelectedNoteId(targetNote.id);
-            } else {
-                // Determine the correct sort order (same as filteredNotes)
-                // Pinned first, then by updated_at desc
-                const sorted = [...notes].sort((a,b) => {
-                    if (a.is_pinned !== b.is_pinned) return a.is_pinned ? -1 : 1;
-                    return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
-                });
-                
-                if (sorted.length > 0) {
-                    setSelectedNoteId(sorted[0].id);
+                if (targetNote) {
+                    setSelectedNoteId(targetNote.id);
+                } else {
+                    // Determine the correct sort order (same as filteredNotes)
+                    // Pinned first, then by updated_at desc
+                    const sorted = [...notes].sort((a,b) => {
+                        if (a.is_pinned !== b.is_pinned) return a.is_pinned ? -1 : 1;
+                        return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+                    });
+                    
+                    if (sorted.length > 0) {
+                        setSelectedNoteId(sorted[0].id);
+                    }
                 }
+                hasInitializedRef.current = true;
+                // Enable transitions after a short delay so the initial render is instant (no slide)
+                setTimeout(() => setTransitionsEnabled(true), 100);
+            } else if (notes.length === 0 && !hasInitializedRef.current) {
+                // If loaded but empty, enable transitions directly
+                hasInitializedRef.current = true;
+                setTimeout(() => setTransitionsEnabled(true), 100);
             }
-            hasInitializedRef.current = true;
         }
-    }, [notes]);
+    }, [notes, loading]);
 
     // Persist selectedNoteId
     useEffect(() => {
@@ -75,10 +114,6 @@ const MainLayoutNote = () => {
         setIsEditing(true);
         // Tiptap needs a moment to initialize or receive the new ID prop
     }, [addNote]);
-
-    const handleEditorChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        // Legacy handler removed, but keeping reference to avoid errors if referenced elsewhere
-    }, []);
 
     // Shortcuts
     useEffect(() => {
@@ -166,12 +201,13 @@ const MainLayoutNote = () => {
             }}
             className="note-list-item"
             style={{ 
-                backgroundColor: selectedNoteId === note.id ? 'var(--bg-item)' : 'transparent',
+                backgroundColor: selectedNoteId === note.id ? 'var(--primary-bg-subtle)' : 'transparent',
+                borderLeft: selectedNoteId === note.id ? '4px solid var(--primary)' : '4px solid transparent',
                 borderBottom: '1px solid var(--border-color)',
                 padding: 0
             }}
         >
-            <div style={{ padding: '12px', pointerEvents: 'none' }}>
+            <div style={{ padding: '12px', paddingLeft: '8px', pointerEvents: 'none' }}>
                 <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{note.title || 'Untitled'}</div>
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {stripMarkdown(note.content).slice(0, 50) || (<span style={{ fontStyle: 'italic', opacity: 0.7 }}>No content</span>)}
@@ -344,7 +380,7 @@ const MainLayoutNote = () => {
     };
 
     return (
-    <div className="main-layout" style={{ display: 'flex', height: '100vh', flexDirection: 'column' }}>
+    <div className={`main-layout ${!transitionsEnabled ? 'disable-transition' : ''}`} style={{ display: 'flex', height: '100vh', flexDirection: 'column' }}>
         {/* Desktop Header */}
         <div className="header-bar desktop-header" style={{ padding: '10px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h2 style={{ margin: 0 }}>NoteBook</h2>
@@ -435,8 +471,24 @@ const MainLayoutNote = () => {
 
         <div className="main-content" style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative' }}>
             {/* Sidebar List */}
-            <div className={`note-sidebar ${selectedNoteId ? 'hidden-on-mobile' : ''}`} style={{ display: 'flex', flexDirection: 'column' }}>
-                <div className="note-sidebar-search" style={{ padding: '10px', borderBottom: '1px solid var(--border-color)', display: 'flex', gap: '8px' }}>
+            <div 
+                className={`note-sidebar ${selectedNoteId ? 'hidden-on-mobile' : ''}`} 
+                style={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    width: sidebarWidth, /* Desktop width controlled by state */
+                    flexShrink: 0
+                }}
+            >
+                <div className="note-sidebar-search" style={{ 
+                    height: '54px', 
+                    boxSizing: 'border-box',
+                    padding: '10px', 
+                    borderBottom: '1px solid var(--border-color)', 
+                    display: 'flex', 
+                    gap: '8px', 
+                    alignItems: 'center' 
+                }}>
                     <input 
                         type="search" 
                         placeholder="Search notes..." 
@@ -469,13 +521,32 @@ const MainLayoutNote = () => {
                 </div>
             </div>
 
+            {/* Resizer Handle (Desktop only) */}
+            <div
+                className="sidebar-resizer hidden-on-mobile"
+                onMouseDown={() => setIsResizing(true)}
+                style={{
+                    width: '4px',
+                    cursor: 'col-resize',
+                    backgroundColor: isResizing ? 'var(--primary)' : 'transparent',
+                    borderRight: '1px solid var(--border-color)',
+                    zIndex: 10,
+                    flexShrink: 0,
+                    transition: 'background-color 0.2s',
+                }}
+                onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'var(--active-bg, rgba(0,0,0,0.1))'}
+                onMouseOut={(e) => !isResizing && (e.currentTarget.style.backgroundColor = 'transparent')}
+            ></div>
+
             {/* Editor Area */}
             <div className={`note-editor ${!selectedNoteId ? 'hidden-on-mobile' : ''} ${selectedNoteId ? 'active-mobile' : ''}`} style={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: 'var(--bg-main)', overflow: 'hidden' }}>
                 {selectedNote ? (
                     <>
                         {/* Desktop Toolbar */}
                         <div className="hidden-on-mobile" style={{ 
-                             padding: '10px 20px', 
+                             height: '54px',
+                             boxSizing: 'border-box',
+                             padding: '0 20px', 
                              borderBottom: '1px solid var(--border-color)', 
                              display: 'flex', 
                              justifyContent: 'flex-end',

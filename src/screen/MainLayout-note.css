@@ -117,6 +117,12 @@
     /* Ensure display is flex as defined in inline styles, forcing it to be visible */
     display: flex !important;
   }
+  
+  /* Disable transition when requested (e.g., initial load) */
+  .disable-transition .note-sidebar,
+  .disable-transition .note-editor {
+      transition: none !important;
+  }
 
   /* Sidebar State */
   .note-sidebar {
