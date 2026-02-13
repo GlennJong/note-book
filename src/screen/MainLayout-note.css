@@ -1,0 +1,61 @@
+/* MainLayout-note.css */
+
+.note-sidebar {
+  width: 30%;
+  border-right: 1px solid var(--border-color);
+  background-color: var(--bg-card);
+  overflow-y: auto;
+  min-width: 250px;
+}
+
+.note-list-item {
+  padding: 12px;
+  border-bottom: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: background-color 0.1s ease;
+}
+
+.note-list-item:hover {
+  background-color: rgba(0, 0, 0, 0.03);
+}
+
+@media (prefers-color-scheme: dark) {
+  .note-list-item:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+}
+
+.note-editor-title {
+  padding: 20px;
+  font-size: 1.5rem;
+  border: none;
+  border-bottom: 1px solid var(--border-color);
+  background-color: transparent;
+  color: var(--text-main);
+  outline: none;
+  width: 100%;
+  border-radius: 0;
+}
+
+.note-editor-textarea {
+    flex: 1;
+    padding: 20px;
+    font-size: 1rem;
+    line-height: 1.6;
+    border: none;
+    resize: none;
+    background-color: transparent;
+    color: var(--text-main);
+    outline: none;
+    font-family: inherit;
+}
+
+
+/* Custom scrollbar for sidebar */
+.note-sidebar::-webkit-scrollbar {
+  width: 6px;
+}
+.note-sidebar::-webkit-scrollbar-thumb {
+  background-color: var(--border-color);
+  border-radius: 3px;
+}
