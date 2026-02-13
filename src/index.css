@@ -11,14 +11,14 @@
   --text-secondary: #6c757d;
   --text-muted: #adb5bd;
   --border-color: #dee2e6;
-  --primary: #007bff;
-  --primary-bg-subtle: #e7f1ff;
+  --primary: #f7b405;
+  --primary-bg-subtle: #fff8e1;
   --danger: #dc3545;
   --success: #198754;
   --warning: #ffc107;
   --warning-bg-subtle: #fff3cd;
   --warning-text: #856404;
-  --text-inv: #ffffff;
+  --text-inv: #212529;
   --input-bg: #e9ecef;
   --chip-bg: #e0e0e0;
   --shadow-color: rgba(0,0,0,0.1);
@@ -44,8 +44,8 @@
     --text-secondary: #b0b0b0;
     --text-muted: #666666;
     --border-color: #444444;
-    --primary: #4dabf7;
-    --primary-bg-subtle: #0d2b4a;
+    --primary: #f7b405;
+    --primary-bg-subtle: #4d3800;
     --danger: #ff6b6b;
     --success: #51cf66;
     --warning: #fcc419;

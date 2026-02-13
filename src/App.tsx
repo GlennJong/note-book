@@ -24,8 +24,9 @@ function App() {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
         <div className="card" style={{ color: 'var(--text-main)', textAlign: 'center', padding: '40px 20px', maxWidth: '400px', width: '100%' }}>
+          <img src="/logo.png" alt="Logo" style={{ width: '100px', marginBottom: '20px' }} />
           <h1 style={{ fontSize: '1.8em', marginBottom: '30px' }}>Welcome to NoteBook</h1>
-          <button onClick={login} style={{ fontSize: '1.1em', padding: '12px 24px', backgroundColor: 'var(--primary)', color: 'var(--bg-card)', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Login with Google</button>
+          <button onClick={login} style={{ fontSize: '1.1em', padding: '12px 24px', backgroundColor: 'var(--primary)', color: 'var(--text-inv)', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Login with Google</button>
         </div>
       </div>
     );

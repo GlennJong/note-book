@@ -1,6 +1,6 @@
 {
   "name": "MoneyBook",
-  "short_name": "MB",
+  "short_name": "MoneyBook",
   "icons": [
     {
       "src": "icons/icon-48x48.png",
@@ -53,8 +53,7 @@
       "type": "image/png"
     }
   ],
-  "start_url": "./",
-  "scope": "./",
+  "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#000000"

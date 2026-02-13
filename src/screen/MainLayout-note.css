@@ -79,9 +79,7 @@
 }
 
 /* Visibility Toggles Classes (Logic Only) */
-.hidden-on-mobile {
-  /* Default: do nothing on desktop, meaning element is visible as per default layout */
-}
+/* .hidden-on-mobile rule handled in media query */
 
 @media (max-width: 768px) {
   /* Layout Changes */

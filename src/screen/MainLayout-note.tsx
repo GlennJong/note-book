@@ -35,6 +35,14 @@ const MainLayoutNote = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [isEditing, setIsEditing] = useState(false);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [isListMenuOpen, setIsListMenuOpen] = useState(false);
+
+    const handleClearStorage = useCallback(() => {
+        if (confirm('Are you sure you want to delete all data? This defaults storage.')) {
+            localStorage.clear();
+            window.location.reload();
+        }
+    }, []);
     const [transitionsEnabled, setTransitionsEnabled] = useState(false); // Initially disabled to prevent slide-in
     
     // Sidebar Resizing
@@ -74,7 +82,7 @@ const MainLayoutNote = () => {
                 const targetNote = lastId ? notes.find(n => n.id === lastId) : null;
 
                 if (targetNote) {
-                    setSelectedNoteId(targetNote.id);
+                    setTimeout(() => setSelectedNoteId(targetNote.id), 0);
                 } else {
                     // Determine the correct sort order (same as filteredNotes)
                     // Pinned first, then by updated_at desc
@@ -84,7 +92,7 @@ const MainLayoutNote = () => {
                     });
                     
                     if (sorted.length > 0) {
-                        setSelectedNoteId(sorted[0].id);
+                        setTimeout(() => setSelectedNoteId(sorted[0].id), 0);
                     }
                 }
                 hasInitializedRef.current = true;
@@ -262,7 +270,8 @@ const MainLayoutNote = () => {
         onUpdate: ({ editor }) => {
             if (activeNoteIdRef.current && !isLoadingRef.current) {
                 // Get Markdown content
-                const markdown = editor.storage.markdown.getMarkdown();
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const markdown = (editor.storage as any).markdown.getMarkdown();
 
                 // For title, we grab the text of the first block/node to simulate "first line title"
                 const fullText = editor.getText();
@@ -315,15 +324,16 @@ const MainLayoutNote = () => {
                 
                 // Content can be HTML (old) or Markdown (new/legacy text)
                 // specific check for HTML to ensure safe loading of legacy HTML
-                const isHtml = content.trim().startsWith('<');
                 
-                // Set content. Tiptap + Markdown extension handles both usually, 
+                // Set content. Tiptap + Markdown extension handles both usually,  
                 // but checking ensures structure.
                 editor.commands.setContent(content);
                 
                 // Clear history so undo doesn't go back to previous note
-                if (editor.commands.clearContentHistory) {
-                    editor.commands.clearContentHistory();
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                if ((editor.commands as any).clearContentHistory) {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    (editor.commands as any).clearContentHistory();
                 }
                 
                 // Flag: loading ended. Timeout ensures onUpdate from setContent is skipped
@@ -391,13 +401,100 @@ const MainLayoutNote = () => {
                 <button onClick={handleCreateNote} className="icon-btn" title="New Note">
                     <span className="material-symbols-outlined">edit_square</span>
                 </button>
+                <div style={{ position: 'relative' }}>
+                    <button className="icon-btn" onClick={() => setIsListMenuOpen(!isListMenuOpen)} title="Menu">
+                        <span className="material-symbols-outlined">more_horiz</span>
+                    </button>
+                    {isListMenuOpen && (
+                        <div style={{
+                            position: 'absolute',
+                            top: '100%',
+                            right: 0,
+                            backgroundColor: 'var(--bg-card)',
+                            boxShadow: '0 4px 12px var(--shadow-color)',
+                            border: '1px solid var(--border-color)',
+                            borderRadius: '8px',
+                            zIndex: 100,
+                            minWidth: '150px',
+                            marginTop: '5px'
+                        }}>
+                             <button
+                                onClick={() => {
+                                    handleClearStorage();
+                                    setIsListMenuOpen(false);
+                                }}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    width: '100%',
+                                    padding: '12px 16px',
+                                    border: 'none',
+                                    background: 'transparent',
+                                    color: 'var(--danger)',
+                                    cursor: 'pointer',
+                                    fontSize: '0.9rem',
+                                    textAlign: 'left',
+                                    whiteSpace: 'nowrap'
+                                }}
+                             >
+                                <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>delete_forever</span>
+                                Delete Storage
+                             </button>
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
 
         {/* Mobile Header (When viewing list) */}
         {!selectedNoteId && (
-            <div className="header-bar mobile-header" style={{ padding: '10px', borderBottom: '1px solid var(--border-color)', justifyContent: 'center', alignItems: 'center' }}>
+            <div className="header-bar mobile-header" style={{ padding: '10px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ width: '40px' }}></div>
                 <h2 style={{ margin: 0 }}>NoteBook</h2>
+                <div style={{ position: 'relative' }}>
+                    <button className="icon-btn" onClick={() => setIsListMenuOpen(!isListMenuOpen)} title="Menu">
+                        <span className="material-symbols-outlined">more_horiz</span>
+                    </button>
+                    {isListMenuOpen && (
+                        <div style={{
+                            position: 'absolute',
+                            top: '100%',
+                            right: 0,
+                            backgroundColor: 'var(--bg-card)',
+                            boxShadow: '0 4px 12px var(--shadow-color)',
+                            border: '1px solid var(--border-color)',
+                            borderRadius: '8px',
+                            zIndex: 100,
+                            minWidth: '150px',
+                            marginTop: '5px'
+                        }}>
+                             <button
+                                onClick={() => {
+                                    handleClearStorage();
+                                    setIsListMenuOpen(false);
+                                }}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    width: '100%',
+                                    padding: '12px 16px',
+                                    border: 'none',
+                                    background: 'transparent',
+                                    color: 'var(--danger)',
+                                    cursor: 'pointer',
+                                    fontSize: '0.9rem',
+                                    textAlign: 'left',
+                                    whiteSpace: 'nowrap'
+                                }}
+                             >
+                                <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>delete_forever</span>
+                                Delete Storage
+                             </button>
+                        </div>
+                    )}
+                </div>
             </div>
         )}
 
