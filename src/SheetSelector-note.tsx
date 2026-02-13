@@ -205,7 +205,7 @@ const SheetSelectorNote = ({ token, onSelect }: { token: string, onSelect: (endp
           onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-item)'}
           onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
         >
-          <span className="material-icons" style={{ fontSize: '18px', animation: loading ? 'spin 1s linear infinite' : 'none' }}>refresh</span>
+          <span className="material-symbols-outlined" style={{ fontSize: '18px', animation: loading ? 'spin 1s linear infinite' : 'none' }}>refresh</span>
           Refresh
           {loading && <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>}
         </button>

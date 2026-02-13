@@ -12,7 +12,7 @@
   "dependencies": {
     "@glennjong/vibe-sheets": "^0.3.6",
     "idb-keyval": "^6.2.2",
-    "material-icons": "^1.13.14",
+    "material-symbols": "^0.40.2",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-is": "^19.2.4"

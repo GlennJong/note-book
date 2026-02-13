@@ -9,8 +9,8 @@
 }
 
 .note-list-item {
-  padding: 12px;
-  border-bottom: 1px solid var(--border-color);
+  /* padding: 12px; handled in inline style to allow SwipeableItem overrides if needed */
+  /* border-bottom: 1px solid var(--border-color); */
   cursor: pointer;
   transition: background-color 0.1s ease;
 }
@@ -59,3 +59,163 @@
   background-color: var(--border-color);
   border-radius: 3px;
 }
+
+/* --- Mobile Responsiveness --- */
+
+/* Default (Desktop) State */
+.mobile-header,
+.mobile-editor-header {
+  display: none !important; /* Force hide on desktop */
+}
+
+/* Visibility Toggles Classes (Logic Only) */
+.hidden-on-mobile {
+  /* Default: do nothing on desktop, meaning element is visible as per default layout */
+}
+
+@media (max-width: 768px) {
+  /* Layout Changes */
+  .header-bar {
+    padding: 10px 16px; /* Slightly larger touch targets */
+  }
+
+  /* Toggle Headers */
+  .desktop-header {
+    display: none !important;
+  }
+
+  .mobile-header,
+  .mobile-editor-header {
+    display: flex !important;
+  }
+
+  /* --- Animation Logic for Slide Transition --- */
+
+  /* Ensure absolute positioning for overlap */
+  .note-sidebar,
+  .note-editor {
+    position: absolute !important;
+    top: 0;
+    left: 0;
+    width: 100% !important;
+    height: 100% !important;
+    border-right: none;
+    /* Use 'will-change' to hint browser for optimization */
+    will-change: transform;
+    transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+    /* Ensure display is flex as defined in inline styles, forcing it to be visible */
+    display: flex !important;
+  }
+
+  /* Sidebar State */
+  .note-sidebar {
+    background-color: var(--bg-card);
+    z-index: 1;
+    transform: translateX(0); /* Default visible */
+  }
+
+  /* When sidebar is technically "hidden" (editor is active),
+     we shift it slightly left (parallax effect) */
+  .note-sidebar.hidden-on-mobile {
+    transform: translateX(-30%);
+    pointer-events: none; /* Disable interaction */
+    filter: brightness(0.95); /* Slightly dim */
+  }
+
+  /* Editor State */
+  .note-editor {
+    background-color: var(--bg-main);
+    z-index: 10;
+    /* Default off-screen to the right */
+    transform: translateX(100%);
+    /* Shadow to separate from sidebar */
+    box-shadow: -10px 0 30px rgba(0,0,0,0.15);
+  }
+
+  /* When editor is active */
+  .note-editor.active-mobile {
+    transform: translateX(0);
+  }
+  
+  /* When editor is "hidden" (no selection), it goes back to right */
+  .note-editor.hidden-on-mobile {
+     transform: translateX(100%);
+     pointer-events: none;
+  }
+}
+
+.icon-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  border-radius: 50%;
+  color: var(--primary);
+  transition: background-color 0.2s;
+}
+
+.icon-btn:hover {
+  background-color: var(--bg-hover, rgba(0,0,0,0.05));
+}
+
+.icon-btn .material-symbols-outlined {
+  font-size: 24px;
+}
+
+/* --- Mobile Bottom Bar Customization --- */
+
+/* Default (Desktop): New Note button hidden in sidebar (it's in header) */
+.mobile-create-btn {
+  display: none !important;
+}
+
+@media (max-width: 768px) {
+  /* Layout Changes */
+  .header-bar {
+    padding: 10px 16px; /* Slightly larger touch targets */
+  }
+
+  /* Toggle Headers */
+  .desktop-header {
+    display: none !important;
+  }
+
+  .mobile-header,
+  .mobile-editor-header {
+    display: flex !important;
+  }
+  
+  /* --- Sidebar Ordering for Bottom Search Bar --- */
+  .note-sidebar {
+     /* Already absolute/flex from animation block below, but we enforce flex-col */
+     display: flex !important;
+     flex-direction: column !important;
+  }
+
+  .note-sidebar-list {
+    /* Main list takes priority */
+    order: 1;
+    flex: 1;
+    overflow-y: auto;
+  }
+
+  .note-sidebar-search {
+    /* Moves to bottom */
+    order: 2;
+    z-index: 5;
+    background-color: var(--bg-card);
+    border-bottom: none !important;
+    border-top: 1px solid var(--border-color);
+    padding-bottom: max(10px, env(safe-area-inset-bottom)) !important;
+  }
+
+  /* Show the new note button on mobile */
+  .mobile-create-btn {
+    display: flex !important;
+    color: var(--primary);
+  }
+
+  /* --- Animation Logic for Slide Transition --- */

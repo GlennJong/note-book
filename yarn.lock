@@ -2723,10 +2723,10 @@ magic-string@^0.25.0, magic-string@^0.25.7:
   dependencies:
     sourcemap-codec "^1.4.8"
 
-material-icons@^1.13.14:
-  version "1.13.14"
-  resolved "https://registry.npmjs.org/material-icons/-/material-icons-1.13.14.tgz"
-  integrity sha512-kZOfc7xCC0rAT8Q3DQixYAeT+tBqZnxkseQtp2bxBxz7q5pMAC+wmit7vJn1g/l7wRU+HEPq23gER4iPjGs5Cg==
+material-symbols@^0.40.2:
+  version "0.40.2"
+  resolved "https://registry.yarnpkg.com/material-symbols/-/material-symbols-0.40.2.tgz#ca24a8577d7bfcd9b1a00521ac1b40805206639a"
+  integrity sha512-QUJF1HztvcpP8pXHPPNESK05Thq/Zy8ub17T2xBDf4+gqx4KBs353lKHuVzE/eCYOtiB9JBlFOU7cjAI6vVMTQ==
 
 math-intrinsics@^1.1.0:
   version "1.1.0"

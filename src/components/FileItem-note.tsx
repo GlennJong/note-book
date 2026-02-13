@@ -42,7 +42,7 @@ const FileItemNote = ({ isNew, file, onSelect }: { isNew: boolean, file: DriveFi
     }}>
       <div key={file.id}>
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px' }}>
-          <span className="material-icons" style={{ fontSize: '24px', marginRight: '8px', color: 'var(--primary)' }}>
+          <span className="material-symbols-outlined" style={{ fontSize: '24px', marginRight: '8px', color: 'var(--primary)' }}>
             book
           </span>
           <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold' }}>{file.name.replace('notebook-', '')}</h3>
@@ -64,7 +64,7 @@ const FileItemNote = ({ isNew, file, onSelect }: { isNew: boolean, file: DriveFi
               justifyContent: 'center',
               gap: '4px'
             }}>
-              <span className="material-icons" style={{ fontSize: '16px' }}>open_in_new</span>
+              <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>open_in_new</span>
               Open
             </button>
           </a>
@@ -94,7 +94,7 @@ const FileItemNote = ({ isNew, file, onSelect }: { isNew: boolean, file: DriveFi
               </>
             ) : (
               <>
-                <span className="material-icons" style={{ fontSize: '18px' }}>check</span>
+                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>check</span>
                 Select
               </>
             )}
