@@ -7,6 +7,7 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import { Markdown } from 'tiptap-markdown';
+import { TagHighlight } from '../common/tiptap-extensions';
 
 const stripMarkdown = (text: string | undefined) => {
     if (!text) return '';
@@ -33,6 +34,19 @@ const MainLayoutNote = () => {
     // Memoize the selected ID to prevent unnecessary re-renders
     const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
+    // Debounce search term to prevent heavy filtering on every keystroke
+    const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedSearchTerm(searchTerm);
+        }, 300); // 300ms delay
+
+        return () => {
+            clearTimeout(handler);
+        };
+    }, [searchTerm]);
+
     const [isEditing, setIsEditing] = useState(false);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isListMenuOpen, setIsListMenuOpen] = useState(false);
@@ -135,15 +149,27 @@ const MainLayoutNote = () => {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [handleCreateNote]);
 
-    const filteredNotes = notes
-    .filter(n => {
-        const term = searchTerm.toLowerCase();
-        // Ensure title and content are strings to prevent .toLowerCase() errors on numbers/etc
-        const title = String(n.title || '');
-        const content = String(n.content || '');
-        return title.toLowerCase().includes(term) || content.toLowerCase().includes(term);
-    })
-    .sort((a,b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+    const filteredNotes = useMemo(() => {
+        const term = debouncedSearchTerm.toLowerCase();
+        
+        if (!term) {
+            return [...notes].sort((a,b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+        }
+        
+        return notes
+        .filter(n => {
+            // Ensure title and content are strings to prevent .toLowerCase() errors on numbers/etc
+            const title = String(n.title || '');
+            const content = String(n.content || '');
+            
+            // Simple check: title is usually short, check it first to skip heavy content check
+            if (title.toLowerCase().includes(term)) return true;
+            
+            // Content check: heavy operation, limit to first 1000 chars for performance
+            return content.slice(0, 1000).toLowerCase().includes(term);
+        })
+        .sort((a,b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+    }, [notes, debouncedSearchTerm]);
 
     const groups = useMemo(() => {
         const today = new Date();
@@ -220,6 +246,34 @@ const MainLayoutNote = () => {
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {stripMarkdown(note.content).slice(0, 50) || (<span style={{ fontStyle: 'italic', opacity: 0.7 }}>No content</span>)}
                 </div>
+                
+                {/* Render Tags */}
+                {note.tags && note.tags.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '6px', pointerEvents: 'auto' }}>
+                        {note.tags.map(tag => (
+                            <span 
+                                key={tag}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSearchTerm(tag);
+                                }}
+                                style={{
+                                    backgroundColor: 'var(--primary-bg-subtle)', // Light highlight
+                                    color: 'var(--primary)',
+                                    fontSize: '0.75rem',
+                                    padding: '2px 6px',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer',
+                                    fontWeight: 500
+                                }}
+                                onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'var(--active-bg, rgba(0,0,0,0.1))'}
+                                onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'var(--primary-bg-subtle)'}
+                            >
+                                {tag}
+                            </span>
+                        ))}
+                    </div>
+                )}
             </div>
         </SwipeableItem>
     );
@@ -266,6 +320,15 @@ const MainLayoutNote = () => {
                 transformPastedText: true,
                 transformCopiedText: true,
             }),
+            TagHighlight.configure({
+                onTagClick: (tag: string) => {
+                    setSearchTerm(tag);
+                    // On mobile, maybe close editor to see results?
+                    if (window.innerWidth < 768) {
+                        setSelectedNoteId(null);
+                    }
+                }
+            })
         ],
         content: '',
         onUpdate: ({ editor }) => {

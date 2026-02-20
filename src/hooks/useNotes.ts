@@ -182,10 +182,25 @@ export const useNotes = (scriptUrl: string | null) => {
     return escaped;
   }
 
+  const extractTags = (content: string): string[] => {
+    // Basic regex: match words starting with #
+    // \p{L} matches any unicode letter, \p{N} any number, _ underscore
+    const regex = /#[\p{L}\p{N}_]+/gu;
+    const matches = content.match(regex);
+    if (!matches) return [];
+    
+    // Unique tags
+    return Array.from(new Set(matches));
+  };
+
   // Actions
   const addNote = useCallback((note: Omit<Note, 'id' | 'updated_at'>) => {
+    // Auto-extract tags from content if not provided or just overwrite
+    const tags = extractTags(note.content);
+
     const newNote: Note = {
         ...note,
+        tags, // Use extracted tags
         id: crypto.randomUUID(),
         updated_at: new Date().toISOString()
     };
@@ -211,9 +226,17 @@ export const useNotes = (scriptUrl: string | null) => {
         if (index === -1) return prevNotes;
         
         const oldNote = prevNotes[index];
+        
+        // If content is being updated, re-extract tags
+        let newTags = oldNote.tags;
+        if (patches.content !== undefined) {
+            newTags = extractTags(patches.content);
+        }
+
         const newNote = { 
             ...oldNote, 
             ...patches, 
+            tags: newTags, // Update tags
             updated_at: options?.skipTimestampUpdate ? oldNote.updated_at : new Date().toISOString() 
         };
         
