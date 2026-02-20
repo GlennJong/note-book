@@ -129,7 +129,12 @@ export const useNotes = (scriptUrl: string | null) => {
       if (deleteTasks.length > 0) {
         await Promise.all(deleteTasks.map(async (task) => {
           try {
-            const url = scriptUrl.includes('?') ? `${scriptUrl}&method=DELETE` : `${scriptUrl}?method=DELETE`;
+            // Some backends expect 'id' in the body, others via query param.
+            // Sending in both places is safest for generic scripts.
+            const separator = scriptUrl.includes('?') ? '&' : '?';
+            const url = `${scriptUrl}${separator}method=DELETE&id=${task.targetId}`;
+            
+            // Still send body just in case
             await fetchScript(url, 'POST', { id: task.targetId });
             completedTaskIds.push(task.id);
           } catch (e) {

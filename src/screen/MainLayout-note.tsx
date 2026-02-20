@@ -10,7 +10,7 @@ import { Markdown } from 'tiptap-markdown';
 
 const stripMarkdown = (text: string | undefined) => {
     if (!text) return '';
-    return text
+    return String(text)
         .replace(/<[^>]*>?/gm, ' ') // HTML
         .replace(/^#+\s+/gm, '') // Headers
         .replace(/(\*\*|__)(.*?)\1/g, '$2') // Bold
