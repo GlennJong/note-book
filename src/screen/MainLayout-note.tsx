@@ -251,7 +251,7 @@ const MainLayoutNote = () => {
                 {/* Render Tags */}
                 {note.tags && note.tags.length > 0 && (
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '6px', pointerEvents: 'auto' }}>
-                        {note.tags.map(tag => (
+                        {note.tags.filter(t => t && t.trim().length > 0).map(tag => (
                             <span 
                                 key={tag}
                                 onClick={(e) => {

@@ -23,8 +23,9 @@ export const fetchScript = async (url: string, method: 'GET' | 'POST' = 'GET', b
   const data: RawData[] = Array.isArray(json.data) ? json.data : [];
   
   return data.map((item: RawData) => {
-    // If tags is a string, split it
-    const tags = typeof item.tags === 'string' ? item.tags.split(',') : (item.tags || []);
+    // If tags is a string, split it and filter out empty strings
+    const rawTags = typeof item.tags === 'string' ? item.tags.split(',') : (item.tags || []);
+    const tags = rawTags.map((t: string) => t.trim()).filter((t: string) => t.length > 0);
     return { 
         ...item, 
         tags 
