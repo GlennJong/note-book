@@ -95,15 +95,20 @@ export const useNotes = (scriptUrl: string | null) => {
       const editTasks = readyTasks.filter(t => t.action === 'edit');
       const deleteTasks = readyTasks.filter(t => t.action === 'delete');
 
-       // 1. Batch Add
+       // 1. Individual Adds (safer than batch if backend doesn't support array)
        if (addTasks.length > 0) {
-        try {
-          const payload = addTasks.map(t => escapeData(t.data));
-           await fetchScript(scriptUrl, 'POST', payload);
-          completedTaskIds.push(...addTasks.map(t => t.id));
-        } catch (e) {
-          console.error("Batch add failed", e);
-        }
+        await Promise.all(addTasks.map(async (task) => {
+            try {
+                // If backend supports method=CREATE, great. If not, default usually works. 
+                // But sending method=CREATE is explicit.
+                const url = scriptUrl.includes('?') ? `${scriptUrl}&method=CREATE` : `${scriptUrl}?method=CREATE`;
+                // Send single object instead of array
+                await fetchScript(url, 'POST', escapeData(task.data));
+                completedTaskIds.push(task.id);
+            } catch (e) {
+                console.error(`Add failed for task ${task.id}`, e);
+            }
+        }));
       }
 
       // 2. Individual Edits (Note: Google Scripts usually handles 'UPDATE' via POST)

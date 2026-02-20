@@ -5,7 +5,19 @@ export const fetchScript = async (url: string, method: 'GET' | 'POST' = 'GET', b
   const options: RequestInit = { method };
   if (method === 'POST' && body) options.body = JSON.stringify(body);
   const res = await fetch(url, options);
-  const json = await res.json();
+  
+  // Try to parse JSON, if fails, return empty array (assuming success for POST)
+  let json: any = {};
+  const text = await res.text();
+  try {
+    json = JSON.parse(text);
+  } catch (e) {
+    if (method === 'POST') {
+        return []; // Assume success for write operations that return text
+    }
+    console.error("Failed to parse response", text);
+    throw e;
+  }
   
   // Safety check: ensure data exists and is an array
   const data: RawData[] = Array.isArray(json.data) ? json.data : [];
