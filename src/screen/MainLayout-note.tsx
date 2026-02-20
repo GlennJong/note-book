@@ -8,6 +8,7 @@ import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import { Markdown } from 'tiptap-markdown';
 import { TagHighlight } from '../common/tiptap-extensions';
+import { SublimeKeymap } from '../common/tiptap-sublime';
 
 const stripMarkdown = (text: string | undefined) => {
     if (!text) return '';
@@ -328,7 +329,8 @@ const MainLayoutNote = () => {
                         setSelectedNoteId(null);
                     }
                 }
-            })
+            }),
+            SublimeKeymap,
         ],
         content: '',
         onUpdate: ({ editor }) => {
