@@ -21,7 +21,7 @@ export const SublimeKeymap = Extension.create({
         
         // Get the node at start (the paragraph/block)
         // We can create a slice of the document for this range
-        const slice = doc.slice(start, end);
+        // const slice = doc.slice(start, end);
         
         // Insert the slice content after the end of the block
         // The end position is inside the node, so end + 1 is after the node.
