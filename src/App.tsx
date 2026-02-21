@@ -7,29 +7,11 @@ const MainLayoutNote = lazy(() => import('./screen/MainLayout-note'));
 
 const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
-function App() {
-  const [selectedScriptUrl, setSelectedScriptUrl] = useState<string | null>(
-    localStorage.getItem('vibe_script_url_note') || null
-  );
-
+const SetupScreen = ({ onComplete }: { onComplete: (url: string) => void }) => {
   const { login, accessToken, isAppsScriptEnabled } = ReactHooks.useGoogleAuth({
     clientId
   });
 
-
-  if (selectedScriptUrl) {
-    return (
-      <Suspense fallback={
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: 'var(--bg-main)' }}>
-           <span className="spinner" style={{ width: '40px', height: '40px', border: '4px solid var(--primary)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></span>
-           <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
-        </div>
-      }>
-        <MainLayoutNote />
-      </Suspense>
-    );
-  }
-  
   if (!accessToken) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
@@ -41,7 +23,8 @@ function App() {
       </div>
     );
   }
-  else if (accessToken && !isAppsScriptEnabled) {
+  
+  if (!isAppsScriptEnabled) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
         <div className="card" style={{ backgroundColor: 'var(--bg-card)', color: 'var(--text-main)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '20px', maxWidth: '400px' }}>
@@ -61,13 +44,30 @@ function App() {
   return (
     <SheetSelectorNote
       token={accessToken}
-      onSelect={(endpoint: string) => {
-        // localStorage key is handled inside SheetSelectorNote but we also set state here
-        // Actually SheetSelectorNote sets 'vibe_script_url_note'.
-        setSelectedScriptUrl(endpoint);
-      }}
+      onSelect={onComplete}
     />
-  )
+  );
+};
+
+function App() {
+  const [selectedScriptUrl, setSelectedScriptUrl] = useState<string | null>(
+    localStorage.getItem('vibe_script_url_note') || null
+  );
+
+  if (selectedScriptUrl) {
+    return (
+      <Suspense fallback={
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: 'var(--bg-main)' }}>
+           <span className="spinner" style={{ width: '40px', height: '40px', border: '4px solid var(--primary)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></span>
+           <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+        </div>
+      }>
+        <MainLayoutNote />
+      </Suspense>
+    );
+  }
+
+  return <SetupScreen onComplete={setSelectedScriptUrl} />;
 }
 
 export default App;
