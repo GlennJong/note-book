@@ -397,70 +397,35 @@ const MainLayoutNote = () => {
     
     // Sync Editor Content when Note ID changes
     const lastNoteIdRef = useRef<string | null>(null);
-    const scrollContainerRef = useRef<HTMLDivElement>(null);
-
-    // Sync Editor Content when Note ID changes
     useEffect(() => {
         if (selectedNoteId !== lastNoteIdRef.current) {
-            // If note changes, handle scroll position
-            if (lastNoteIdRef.current && scrollContainerRef.current) {
-                // Save old position
-                localStorage.setItem(`notebook_scroll_${lastNoteIdRef.current}`, scrollContainerRef.current.scrollTop.toString());
-            }
-
-            if (selectedNoteId) {
-                // Only if switching TO a note (not list)
-                if (editor && selectedNote) {
-                    isLoadingRef.current = true; // Flag: loading started
-                    const content = selectedNote.content || '';
-                    editor.commands.setContent(content);
-                    
-                    // Clear history
+            if (editor && selectedNote) {
+                isLoadingRef.current = true; // Flag: loading started
+                
+                const content = selectedNote.content || '';
+                
+                // Content can be HTML (old) or Markdown (new/legacy text)
+                // specific check for HTML to ensure safe loading of legacy HTML
+                
+                // Set content. Tiptap + Markdown extension handles both usually,  
+                // but checking ensures structure.
+                editor.commands.setContent(content);
+                
+                // Clear history so undo doesn't go back to previous note
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                if ((editor.commands as any).clearContentHistory) {
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    if ((editor.commands as any).clearContentHistory) {
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        (editor.commands as any).clearContentHistory();
-                    }
-                    
-                    // Restore scroll position
-                    // We need a slight delay for layout to stabilize after content set
-                    requestAnimationFrame(() => {
-                        const savedScroll = localStorage.getItem(`notebook_scroll_${selectedNoteId}`);
-                        if (scrollContainerRef.current) {
-                            if (savedScroll) {
-                                scrollContainerRef.current.scrollTop = parseInt(savedScroll, 10);
-                            } else {
-                                scrollContainerRef.current.scrollTop = 0;
-                            }
-                        }
-                        isLoadingRef.current = false;
-                    });
+                    (editor.commands as any).clearContentHistory();
                 }
-            } else {
-                // If going BACK TO LIST (selectedNoteId is null), CLEAR the saved scroll of the previous note
-                if (lastNoteIdRef.current) {
-                    localStorage.removeItem(`notebook_scroll_${lastNoteIdRef.current}`);
-                }
+                
+                // Flag: loading ended. Timeout ensures onUpdate from setContent is skipped
+                setTimeout(() => {
+                    isLoadingRef.current = false;
+                }, 0);
             }
-
             lastNoteIdRef.current = selectedNoteId;
         }
     }, [selectedNoteId, selectedNote, editor]);
-
-    // Save scroll position on unmount/reload frequently
-    useEffect(() => {
-        const handleScroll = () => {
-            if (selectedNoteId && scrollContainerRef.current) {
-                // Debounce could be good, but simple setItem is fast enough usually
-                localStorage.setItem(`notebook_scroll_${selectedNoteId}`, scrollContainerRef.current.scrollTop.toString());
-            }
-        };
-        const el = scrollContainerRef.current;
-        if (el) {
-            el.addEventListener('scroll', handleScroll, { passive: true });
-            return () => el.removeEventListener('scroll', handleScroll);
-        }
-    }, [selectedNoteId, isEditing]); // Re-attach if ref changes (e.g. view mode switch)
 
     // Update Editable State
     useEffect(() => {
@@ -817,13 +782,7 @@ const MainLayoutNote = () => {
                                 }
                             }}
                         > 
-                            {/* Wrap EditorContent in a scroll container with ref to restore scroll */}
-                            <div 
-                                ref={scrollContainerRef}
-                                style={{ flex: 1, height: '100%', overflowY: 'auto' }}
-                            >
-                                <EditorContent editor={editor} style={{ minHeight: '100%' }} />
-                            </div>
+                            <EditorContent editor={editor} style={{ flex: 1, height: '100%', overflowY: 'auto' }} />
                         </div>
                     </>
                 ) : (
