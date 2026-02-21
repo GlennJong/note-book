@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo, useRef, useLayoutEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useNotes } from '../hooks/useNotes';
 import './MainLayout-note.css'; 
 import SwipeableItem from '../components/SwipeableItem';
