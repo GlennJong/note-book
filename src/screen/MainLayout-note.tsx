@@ -63,6 +63,7 @@ const MainLayoutNote = () => {
     // Sidebar Resizing
     const [sidebarWidth, setSidebarWidth] = useState(300);
     const [isResizing, setIsResizing] = useState(false);
+    const [isInitializing, setIsInitializing] = useState(true);
 
     useEffect(() => {
         const handleMouseMove = (e: MouseEvent) => {
@@ -92,12 +93,17 @@ const MainLayoutNote = () => {
     const hasInitializedRef = useRef(false);
     useEffect(() => {
         if (!loading) {
-            if (!hasInitializedRef.current && notes.length > 0) {
+            if (hasInitializedRef.current) {
+                setIsInitializing(false);
+                return;
+            }
+
+            if (notes.length > 0) {
                 const lastId = localStorage.getItem('notebook_last_selected_id');
                 const targetNote = lastId ? notes.find(n => n.id === lastId) : null;
 
                 if (targetNote) {
-                    setTimeout(() => setSelectedNoteId(targetNote.id), 0);
+                    setSelectedNoteId(targetNote.id);
                 } else {
                     // Determine the correct sort order (same as filteredNotes)
                     // Pinned first, then by updated_at desc
@@ -109,16 +115,18 @@ const MainLayoutNote = () => {
                     if (sorted.length > 0) {
                         // Only auto-select on desktop if no lastId found
                         if (window.innerWidth > 768) {
-                            setTimeout(() => setSelectedNoteId(sorted[0].id), 0);
+                            setSelectedNoteId(sorted[0].id);
                         }
                     }
                 }
                 hasInitializedRef.current = true;
+                setIsInitializing(false);
                 // Enable transitions after a short delay so the initial render is instant (no slide)
                 setTimeout(() => setTransitionsEnabled(true), 100);
-            } else if (notes.length === 0 && !hasInitializedRef.current) {
+            } else if (notes.length === 0) {
                 // If loaded but empty, enable transitions directly
                 hasInitializedRef.current = true;
+                setIsInitializing(false);
                 setTimeout(() => setTransitionsEnabled(true), 100);
             }
         }
@@ -389,35 +397,70 @@ const MainLayoutNote = () => {
     
     // Sync Editor Content when Note ID changes
     const lastNoteIdRef = useRef<string | null>(null);
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+    // Sync Editor Content when Note ID changes
     useEffect(() => {
         if (selectedNoteId !== lastNoteIdRef.current) {
-            if (editor && selectedNote) {
-                isLoadingRef.current = true; // Flag: loading started
-                
-                const content = selectedNote.content || '';
-                
-                // Content can be HTML (old) or Markdown (new/legacy text)
-                // specific check for HTML to ensure safe loading of legacy HTML
-                
-                // Set content. Tiptap + Markdown extension handles both usually,  
-                // but checking ensures structure.
-                editor.commands.setContent(content);
-                
-                // Clear history so undo doesn't go back to previous note
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                if ((editor.commands as any).clearContentHistory) {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    (editor.commands as any).clearContentHistory();
-                }
-                
-                // Flag: loading ended. Timeout ensures onUpdate from setContent is skipped
-                setTimeout(() => {
-                    isLoadingRef.current = false;
-                }, 0);
+            // If note changes, handle scroll position
+            if (lastNoteIdRef.current && scrollContainerRef.current) {
+                // Save old position
+                localStorage.setItem(`notebook_scroll_${lastNoteIdRef.current}`, scrollContainerRef.current.scrollTop.toString());
             }
+
+            if (selectedNoteId) {
+                // Only if switching TO a note (not list)
+                if (editor && selectedNote) {
+                    isLoadingRef.current = true; // Flag: loading started
+                    const content = selectedNote.content || '';
+                    editor.commands.setContent(content);
+                    
+                    // Clear history
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    if ((editor.commands as any).clearContentHistory) {
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        (editor.commands as any).clearContentHistory();
+                    }
+                    
+                    // Restore scroll position
+                    // We need a slight delay for layout to stabilize after content set
+                    requestAnimationFrame(() => {
+                        const savedScroll = localStorage.getItem(`notebook_scroll_${selectedNoteId}`);
+                        if (scrollContainerRef.current) {
+                            if (savedScroll) {
+                                scrollContainerRef.current.scrollTop = parseInt(savedScroll, 10);
+                            } else {
+                                scrollContainerRef.current.scrollTop = 0;
+                            }
+                        }
+                        isLoadingRef.current = false;
+                    });
+                }
+            } else {
+                // If going BACK TO LIST (selectedNoteId is null), CLEAR the saved scroll of the previous note
+                if (lastNoteIdRef.current) {
+                    localStorage.removeItem(`notebook_scroll_${lastNoteIdRef.current}`);
+                }
+            }
+
             lastNoteIdRef.current = selectedNoteId;
         }
     }, [selectedNoteId, selectedNote, editor]);
+
+    // Save scroll position on unmount/reload frequently
+    useEffect(() => {
+        const handleScroll = () => {
+            if (selectedNoteId && scrollContainerRef.current) {
+                // Debounce could be good, but simple setItem is fast enough usually
+                localStorage.setItem(`notebook_scroll_${selectedNoteId}`, scrollContainerRef.current.scrollTop.toString());
+            }
+        };
+        const el = scrollContainerRef.current;
+        if (el) {
+            el.addEventListener('scroll', handleScroll, { passive: true });
+            return () => el.removeEventListener('scroll', handleScroll);
+        }
+    }, [selectedNoteId, isEditing]); // Re-attach if ref changes (e.g. view mode switch)
 
     // Update Editable State
     useEffect(() => {
@@ -462,6 +505,16 @@ const MainLayoutNote = () => {
         }
         touchStartRef.current = null;
     };
+
+    if (isInitializing) {
+        return (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: 'var(--bg-main)' }}>
+               {/* Same spinner as App.tsx */}
+               <span className="spinner" style={{ width: '40px', height: '40px', border: '4px solid var(--primary)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></span>
+               <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+            </div>
+        );
+    }
 
     return (
     <div className={`main-layout ${!transitionsEnabled ? 'disable-transition' : ''}`} style={{ display: 'flex', height: '100vh', flexDirection: 'column' }}>
@@ -764,7 +817,13 @@ const MainLayoutNote = () => {
                                 }
                             }}
                         > 
-                            <EditorContent editor={editor} style={{ flex: 1, height: '100%', overflowY: 'auto' }} />
+                            {/* Wrap EditorContent in a scroll container with ref to restore scroll */}
+                            <div 
+                                ref={scrollContainerRef}
+                                style={{ flex: 1, height: '100%', overflowY: 'auto' }}
+                            >
+                                <EditorContent editor={editor} style={{ minHeight: '100%' }} />
+                            </div>
                         </div>
                     </>
                 ) : (
