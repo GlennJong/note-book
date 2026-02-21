@@ -771,7 +771,7 @@ const MainLayoutNote = () => {
                         </div>
 
                         <div 
-                            style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', padding: '20px', cursor: 'text' }}
+                            style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', padding: '20px', cursor: 'text', WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
                             onTouchStart={handleTouchStart}
                             onTouchEnd={handleTouchEnd}
                             onClick={() => { 
@@ -782,7 +782,7 @@ const MainLayoutNote = () => {
                                 }
                             }}
                         > 
-                            <EditorContent editor={editor} style={{ flex: 1, height: '100%', overflowY: 'auto' }} />
+                            <EditorContent editor={editor} style={{ flex: 1, minHeight: '100%' }} />
                         </div>
                     </>
                 ) : (
