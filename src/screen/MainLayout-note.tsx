@@ -89,11 +89,19 @@ const MainLayoutNote = () => {
         };
     }, [isResizing]);
 
+    const editorScrollRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        if (editorScrollRef.current) {
+            editorScrollRef.current.scrollTop = 0;
+        }
+    }, [selectedNoteId]);
+
     // Initialize: Select the last accessed note, or fallback to first
     const hasInitializedRef = useRef(false);
     useEffect(() => {
         if (!loading) {
             if (hasInitializedRef.current) {
+                // eslint-disable-next-line react-hooks/set-state-in-effect
                 setIsInitializing(false);
                 return;
             }
@@ -324,40 +332,6 @@ const MainLayoutNote = () => {
     }, []);
     
     const isLoadingRef = useRef(false);
-    const scrollContainerRef = useRef<HTMLDivElement>(null);
-    
-    // Restore scroll position when note changes
-    useEffect(() => {
-        if (!selectedNoteId || !scrollContainerRef.current) return;
-        
-        // Wait for next frame to ensure content is rendered
-        requestAnimationFrame(() => {
-             if (!selectedNoteId || !scrollContainerRef.current) return;
-             const key = `notebook_scroll_${selectedNoteId}`;
-             const savedScroll = localStorage.getItem(key);
-             if (savedScroll) {
-                 scrollContainerRef.current.scrollTop = Number(savedScroll);
-             } else {
-                 scrollContainerRef.current.scrollTop = 0;
-             }
-        });
-    }, [selectedNoteId]);
-
-    // Save scroll position on scroll
-    const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-        if (!selectedNoteId) return;
-        const target = e.currentTarget;
-        const key = `notebook_scroll_${selectedNoteId}`;
-        // Simple debounce or throttle could be added if performance is an issue,
-        // but for now direct save usually works on modern browsers for simple values.
-        // Actually, let's debounce slightly to avoid 100s of writes per second
-        const timeoutId = (target as any)._scrollTimeout;
-        if (timeoutId) clearTimeout(timeoutId);
-        
-        (target as any)._scrollTimeout = setTimeout(() => {
-            localStorage.setItem(key, String(target.scrollTop));
-        }, 100);
-    }, [selectedNoteId]);
 
     // Tiptap Editor
     const editor = useEditor({
@@ -805,13 +779,10 @@ const MainLayoutNote = () => {
                         </div>
 
                         <div 
-                            ref={scrollContainerRef}
+                            ref={editorScrollRef}
                             style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', padding: '20px', cursor: 'text', WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
                             onTouchStart={handleTouchStart}
                             onTouchEnd={handleTouchEnd}
-                            onScroll={(e) => {
-                                handleScroll(e);
-                            }}
                             onClick={() => { 
                                 if (!isEditing) {
                                     setIsEditing(true);
@@ -819,7 +790,7 @@ const MainLayoutNote = () => {
                                     setTimeout(() => editor?.commands.focus(), 10);
                                 }
                             }}
-                        > 
+                        >  
                             <EditorContent editor={editor} style={{ flex: 1, minHeight: '100%' }} />
                         </div>
                     </>
