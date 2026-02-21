@@ -107,7 +107,10 @@ const MainLayoutNote = () => {
                     });
                     
                     if (sorted.length > 0) {
-                        setTimeout(() => setSelectedNoteId(sorted[0].id), 0);
+                        // Only auto-select on desktop if no lastId found
+                        if (window.innerWidth > 768) {
+                            setTimeout(() => setSelectedNoteId(sorted[0].id), 0);
+                        }
                     }
                 }
                 hasInitializedRef.current = true;
@@ -123,8 +126,13 @@ const MainLayoutNote = () => {
 
     // Persist selectedNoteId
     useEffect(() => {
+        // Skip persistence during initialization
+        if (!hasInitializedRef.current) return;
+
         if (selectedNoteId) {
             localStorage.setItem('notebook_last_selected_id', selectedNoteId);
+        } else {
+            localStorage.removeItem('notebook_last_selected_id');
         }
     }, [selectedNoteId]);
     
