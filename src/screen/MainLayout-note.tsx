@@ -156,7 +156,7 @@ const MainLayoutNote = () => {
     
     const handleCreateNote = useCallback(() => {
         // Only set title, content is empty initially
-        const newId = addNote({ title: 'New Note', content: '', tags: [] });
+        const newId = addNote({ title: 'New Note', content: '', tags: [], isNew: true });
         setSelectedNoteId(newId);
         setIsEditing(true);
         // Tiptap needs a moment to initialize or receive the new ID prop
@@ -406,7 +406,36 @@ const MainLayoutNote = () => {
     // Sync Editor Content when Note ID changes
     const lastNoteIdRef = useRef<string | null>(null);
     useEffect(() => {
+        // Handle saving/discarding of previous note
+        const prevId = lastNoteIdRef.current;
+        if (prevId && prevId !== selectedNoteId) {
+            const prevNote = notes.find(n => n.id === prevId);
+
+            // If we found the previous note and it was new
+            if (prevNote && prevNote.isNew) {
+                // If content is empty or default, discard it.
+                // Note: content might be empty string or just whitespace
+                const cleanContent = stripMarkdown(prevNote.content || '').trim();
+                const isTitleDefault = prevNote.title === 'New Note' || prevNote.title.trim() === '';
+                
+                if (cleanContent.length === 0 && isTitleDefault) {
+                    // Discard
+                    removeNote(prevId);
+                } else {
+                    // Save (commit)
+                    updateNote(prevId, { isNew: false });
+                }
+            }
+        }
+
+        // Only update editor content if the selected NOTE ID actually changes
+        // AND validation prevents unnecessary re-setting content on content updates
         if (selectedNoteId !== lastNoteIdRef.current) {
+            lastNoteIdRef.current = selectedNoteId; // Update ref immediately to "lock" current processing
+
+            // If we selected a new note (or even same ID but triggered change? No, ID check prevents that)
+            // If selectedNoteId is null, we just cleared ref above. Editor handling below requires selectedNote.
+            
             if (editor && selectedNote) {
                 isLoadingRef.current = true; // Flag: loading started
                 
@@ -433,7 +462,7 @@ const MainLayoutNote = () => {
             }
             lastNoteIdRef.current = selectedNoteId;
         }
-    }, [selectedNoteId, selectedNote, editor]);
+    }, [selectedNoteId, selectedNote, editor, notes, removeNote, updateNote]);
 
     // Update Editable State
     useEffect(() => {

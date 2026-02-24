@@ -5,4 +5,5 @@ export type Note = {
   tags: string[];
   updated_at: string;
   is_pinned?: boolean;
+  isNew?: boolean;
 };

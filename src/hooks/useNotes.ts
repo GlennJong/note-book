@@ -26,7 +26,35 @@ export const useNotes = (scriptUrl: string | null) => {
     const loadData = async () => {
       try {
         const savedNotes = await get('notebook_notes');
-        if (savedNotes) setNotes(savedNotes);
+        if (savedNotes) {
+             // Cleanup: Remove empty "new" notes that might have been stranded
+             const validNotes = (savedNotes as Note[]).filter(n => {
+                 if (n.isNew) {
+                     // Check if empty
+                     const content = n.content || '';
+                     const title = n.title || '';
+                     if (content.trim() === '' && (title === 'New Note' || title.trim() === '')) {
+                         return false; // discard
+                     }
+                     // If keeping, strip isNew? Or keep it?
+                     // Probably strip it so it syncs if modified later?
+                     // Or keep it so we know it hasn't been synced?
+                     // If we keep it, we need to ensure it eventually syncs.
+                     // But in our logic, updates to "isNew" notes don't sync until "isNew" is removed.
+                     // So we should probably remove isNew here to force it to behave like a normal note
+                     // OR verify if we missed the sync.
+                     // Simplest: If it has content, it's valid. Treat as normal note (remove isNew).
+                 }
+                 return true;
+             }).map(n => {
+                 if (n.isNew) {
+                     const { isNew, ...rest } = n;
+                     return rest;
+                 }
+                 return n;
+             });
+             setNotes(validNotes);
+        }
         
         const savedTasks = await get('notebook_pending_tasks');
         if (savedTasks) setPendingTasks(savedTasks);
@@ -207,6 +235,9 @@ export const useNotes = (scriptUrl: string | null) => {
     
     setNotes(prev => [newNote, ...prev]);
 
+    // If marked as new (temporary), do not sync yet.
+    if (newNote.isNew) return newNote.id;
+
     // Queue creation immediately (no debounce needed for creation usually, but consistent)
     const task: SyncTask = {
         id: crypto.randomUUID(),
@@ -246,6 +277,30 @@ export const useNotes = (scriptUrl: string | null) => {
         // Debounce Sync Logic:
         // Update pending tasks. If there's already an edit task for this ID, update it and push back `readyAt`.
         setPendingTasks(prevTasks => {
+            // Check if note WAS new.
+            if (oldNote.isNew) {
+                // Determine if we should treat this as the creation event (ADD)
+                // If patches explicitly sets isNew to false, OR if we decide any update promotes it.
+                // But we want to avoid syncing while it's still 'isNew', effectively buffering it locally.
+                
+                // If the patch removes isNew (sets it to false or undefined if optional?), 
+                // BUT `patches.isNew` exists and is false.
+                if (patches.isNew === false) {
+                    // Create ADD task
+                    return [...prevTasks, {
+                        id: crypto.randomUUID(),
+                        action: 'add',
+                        targetId: id,
+                        data: newNote,
+                        timestamp: Date.now(),
+                        readyAt: Date.now()
+                    }];
+                } else {
+                    // Still new, update local state (done above) but DO NOT queue a sync task yet.
+                    return prevTasks;
+                }
+            }
+            
             const existingTaskIndex = prevTasks.findIndex(t => t.targetId === id && t.action === 'edit');
             const readyTime = Date.now() + 2000; // 2 seconds debounce
 
@@ -272,10 +327,21 @@ export const useNotes = (scriptUrl: string | null) => {
   }, []);
 
   const removeNote = useCallback((id: string) => {
+    // We need to know if the note is new to decide on sync task.
+    // Instead of relying on closure `notes`, use functional update to find it?
+    // But `setPendingTasks` is separate.
+    // Let's find the note from current `notes` state (closure).
+    const noteToDelete = notes.find(n => n.id === id);
+    const isNew = noteToDelete?.isNew;
+
     setNotes(prev => prev.filter(n => n.id !== id));
     
-    // Remove any pending add/edits for this note to save bandwidth
     setPendingTasks(prev => {
+        // If note was new, just clear its pending tasks. Do not queue delete.
+        if (isNew) {
+             return prev.filter(t => t.targetId !== id);
+        }
+
         const filtered = prev.filter(t => t.targetId !== id);
         return [...filtered, {
             id: crypto.randomUUID(),
@@ -285,7 +351,7 @@ export const useNotes = (scriptUrl: string | null) => {
             readyAt: Date.now()
         }];
     });
-  }, []);
+  }, [notes]);
 
   return {
     notes,
