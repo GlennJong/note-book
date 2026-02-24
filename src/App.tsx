@@ -14,7 +14,7 @@ const SetupScreen = ({ onComplete }: { onComplete: (url: string) => void }) => {
 
   if (!accessToken) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
         <div className="card" style={{ color: 'var(--text-main)', textAlign: 'center', padding: '40px 20px', maxWidth: '400px', width: '100%' }}>
           <img src="icons/icon-apple.png" alt="Logo" style={{ width: '100px', marginBottom: '20px' }} />
           <h1 style={{ fontSize: '1.8em', marginBottom: '30px' }}>Welcome to NoteBook</h1>
@@ -26,7 +26,7 @@ const SetupScreen = ({ onComplete }: { onComplete: (url: string) => void }) => {
   
   if (!isAppsScriptEnabled) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
         <div className="card" style={{ backgroundColor: 'var(--bg-card)', color: 'var(--text-main)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '20px', maxWidth: '400px' }}>
           { isAppsScriptEnabled === undefined ? 
             <p>Checking your Apps Script permission...</p>

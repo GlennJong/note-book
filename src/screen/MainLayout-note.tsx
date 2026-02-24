@@ -510,7 +510,7 @@ const MainLayoutNote = () => {
 
     if (isInitializing) {
         return (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: 'var(--bg-main)' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', backgroundColor: 'var(--bg-main)' }}>
                {/* Same spinner as App.tsx */}
                <span className="spinner" style={{ width: '40px', height: '40px', border: '4px solid var(--primary)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></span>
                <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
@@ -519,7 +519,7 @@ const MainLayoutNote = () => {
     }
 
     return (
-    <div className={`main-layout ${!transitionsEnabled ? 'disable-transition' : ''}`} style={{ display: 'flex', height: '100vh', flexDirection: 'column' }}>
+    <div className={`main-layout ${!transitionsEnabled ? 'disable-transition' : ''}`} style={{ display: 'flex', height: '100%', flexDirection: 'column' }}>
         {/* Desktop Header */}
         <div className="header-bar desktop-header" style={{ padding: '10px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h2 style={{ margin: 0 }}>NoteBook</h2>

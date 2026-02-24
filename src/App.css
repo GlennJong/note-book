@@ -1,6 +1,6 @@
 #root {
   width: 100%;
-  height: 100vh;
+  height: 100%; /* Changed from 100vh to ensure it fits within the fixed body */
   margin: 0;
   padding: 0;
   overflow: hidden; /* Prevent scrolling on the root itself */
