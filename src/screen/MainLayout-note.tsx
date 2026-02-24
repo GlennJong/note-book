@@ -333,6 +333,8 @@ const MainLayoutNote = () => {
     
     const isLoadingRef = useRef(false);
 
+    const hasEditedRef = useRef(false);
+
     // Tiptap Editor
     const editor = useEditor({
         extensions: [
@@ -359,6 +361,7 @@ const MainLayoutNote = () => {
         content: '',
         onUpdate: ({ editor }) => {
             if (activeNoteIdRef.current && !isLoadingRef.current) {
+                hasEditedRef.current = true;
                 // Get Markdown content
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const markdown = (editor.storage as any).markdown.getMarkdown();
@@ -376,7 +379,7 @@ const MainLayoutNote = () => {
         onBlur: () => {
              // Update timestamp only when focus leaves (edit finished)
              // Check if we are actually editing or just navigating away
-             if (activeNoteIdRef.current && !isLoadingRef.current) {
+             if (activeNoteIdRef.current && !isLoadingRef.current && hasEditedRef.current) {
                 updateNote(activeNoteIdRef.current, {}); 
             }
         },
@@ -438,6 +441,7 @@ const MainLayoutNote = () => {
             
             if (editor && selectedNote) {
                 isLoadingRef.current = true; // Flag: loading started
+                hasEditedRef.current = false; // Reset edit flag
                 
                 const content = selectedNote.content || '';
                 
